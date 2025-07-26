@@ -6,14 +6,15 @@
 %         1/15/2019 - RWB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 run('../parameters/simulation_parameters')  % load SIM: simulation parameters
-run('../parameters/aerosonde_parameters')  % load MAV: aircraft parameters
-
+%run('../parameters/aerosonde_parameters')  % load MAV: aircraft parameters
+run('aerosonde_parameters')  % load MAV: aircraft parameters
 % initialize the mav viewer
-addpath('../chap2'); mav_view = mav_viewer();  
+%addpath('../chap2'); spacecraft_view = spacecraft_viewer();  
 addpath('../chap2'); data_view = data_viewer();
+addpath('../chap3'); mav_view = mav_viewer();
 
 % initialize the video writer
-VIDEO = 0;  % 1 means write video, 0 means don't write video
+VIDEO = 1;  % 1 means write video, 0 means don't write video
 if VIDEO==1, video=video_writer('chap3_video.avi', SIM.ts_video); end
 
 
@@ -29,17 +30,17 @@ while sim_time < SIM.end_time
     %-------vary forces and moments to check dynamics-------------
     fx = 10;
     fy = 0; % 10;
-    fz = 0; % 10;
-    Mx = 0; % 0.1;
+    fz = -10; % 10;
+    Mx = 10; % 0.1;
     My = 0; % 0.1;
     Mz = 0; % 0.1;
     forces_moments = [fx; fy; fz; Mx; My; Mz];
 
     %-------physical system-------------
-    mav.update(forces_moments, MAV);
+    mav.update_state(forces_moments, MAV);
     
     %-------update viewer-------------
-    mav_view.update(mav.true_state);  % plot body of MAV
+    mav_view.update(mav.true_state);  % ← 클래스가 아니라 객체에 호출!
     data_view.update(mav.true_state,... % true states
                      mav.true_state,... % estimated states
                      mav.true_state,... % commmanded states

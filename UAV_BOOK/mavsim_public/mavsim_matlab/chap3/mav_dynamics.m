@@ -60,25 +60,33 @@ classdef mav_dynamics < handle
             n     = forces_moments(6);
         
             % position kinematics
-            pn_dot = 
-            pe_dot = 
-            pd_dot = 
+            pn_dot = u*(e0^2+e1^2-e2^2-e3^2) + v*2*(e1*e2-e0*e3) + w*2*(e1*e3+e0*e2);
+            pe_dot = u*2*(e1*e2+e0*e3) + v*(e0^2-e1^2+e2^2-e3^2) + w*2*(e2*e3-e0*e1);
+            pd_dot = u*2*(e1*e3-e0*e2) + v*2*(e2*e3+e0*e1) + w*(e0^2-e1^2-e2^2+e3^2);
 
             % position dynamics
-            u_dot = 
-            v_dot = 
-            w_dot = 
+            u_dot = r*v - q*w + (1/MAV.mass)*(fx);
+            v_dot = p*w - r*u + (1/MAV.mass)*(fy);
+            w_dot = q*u - p*v + (1/MAV.mass)*(fz);
             
+            % Step 2: Build Omega matrix from body rates
+            Omega = 0.5 * [  0,  -p,  -q,  -r;
+                             p,   0,   r,  -q;
+                             q,  -r,   0,   p;
+                             r,   q,  -p,   0];
+
+            % Step 3: Quaternion derivative
+            q_dot = Omega * [e0; e1; e2; e3];
             % rotational kinematics
-            e0_dot = 
-            e1_dot = 
-            e2_dot = 
-            e3_dot = 
+            e0_dot = q_dot(1);
+            e1_dot = q_dot(2);
+            e2_dot = q_dot(3);
+            e3_dot = q_dot(4);
             
             % rotational dynamics
-            p_dot = 
-            q_dot = 
-            r_dot = 
+            p_dot = MAV.Gamma1*p*q-MAV.Gamma2*q*r+MAV.Gamma3*ell+MAV.Gamma4*n;
+            q_dot = MAV.Gamma5*p*r-MAV.Gamma6*(p^2-r^2)+m/MAV.Jy;
+            r_dot = MAV.Gamma7*p*q-MAV.Gamma1*q*r+MAV.Gamma4*ell+MAV.Gamma8*n;
         
             % collect all the derivaties of the states
             xdot = [pn_dot; pe_dot; pd_dot; u_dot; v_dot; w_dot;...

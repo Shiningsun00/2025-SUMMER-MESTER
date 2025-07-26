@@ -33,7 +33,7 @@ function drawSpacecraft(uu)
         ylabel('North')
         zlabel('-Down')
         view(32,47)  % set the vieew angle for figure
-        axis([-10,10,-10,10,-10,10]);
+        axis([-50, 50, -30, 200, -50, 50]);
         hold on
         
     % at every other time step, redraw base and rod

@@ -4,7 +4,7 @@ addpath('../tools');
 % initial conditions
 MAV.pn0    = 0;     % initial North position
 MAV.pe0    = 0;     % initial East position
-MAV.pd0    = -100;  % initial Down position (negative altitude)
+MAV.pd0    = 0;  % initial Down position (negative altitude)
 MAV.u0     = 25;     % initial velocity along body x-axis
 MAV.v0     = 0;     % initial velocity along body y-axis
 MAV.w0     = 0;     % initial velocity along body z-axis
