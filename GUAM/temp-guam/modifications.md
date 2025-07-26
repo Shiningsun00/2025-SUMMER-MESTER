@@ -1,4 +1,4 @@
-# Modifications by HAECHAN LEE
+# Modifications by HAECHAN LEE, 
  
 ## Version 1.1 기반 수정 사항 (2025.07.26)(예시)
 - GUAM 코드를 `2025-SUMMER-MESTER` 프로젝트에 통합
