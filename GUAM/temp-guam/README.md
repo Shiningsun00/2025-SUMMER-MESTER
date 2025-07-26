@@ -224,3 +224,9 @@
 % AS WELL AS ANY PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.    
 % RECIPIENT'S SOLE REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE,   
 % UNILATERAL TERMINATION OF THIS AGREEMENT.  
+
+
+---
+**License**  
+This software is released under the [NASA Open Source Agreement 1.3](./LICENSE/NASA_NOSA_1.3.pdf).  
+© 2024 United States Government as represented by NASA.
