@@ -2,7 +2,7 @@
 Trajectory Stabilization of Tilting MAV VTOL Systems
 
 
-## 📜 License Summary
+##  License Summary
 
 This repository includes multiple submodules with distinct licenses:
 
