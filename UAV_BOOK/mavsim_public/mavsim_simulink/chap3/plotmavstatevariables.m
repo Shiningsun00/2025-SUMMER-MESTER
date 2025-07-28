@@ -78,16 +78,19 @@ function plotMAVStateVariables(uu)
     persistent delta_a_handle
     persistent delta_r_handle
     persistent delta_t_handle
-    
+    persistent gif_frame_idx gif_filename
+    persistent h_fig2
 
-  % first time function is called, initialize plot and persistent vars
+
+  %first time function is called, initialize plot and persistent vars
     if t==0,
-        figure(2), clf
+        h_fig2=figure(2);
+        clf
 
         subplot(8,2,1)
         hold on
         pn_handle = graph_y_yhat_yd(t, pn, pn_hat, pn_c, 'p_n', []);
-        
+
         subplot(8,2,2)
         hold on
         Va_handle = graph_y_yhat_yd(t, Va, Va_hat, Va_c, 'V_a', []);
@@ -111,32 +114,32 @@ function plotMAVStateVariables(uu)
         subplot(8,2,7)
         hold on
         phi_handle = graph_y_yhat_yd(t, phi, phi_hat, phi_c, '\phi', []);
-        
+
         subplot(8,2,8)
         hold on
         p_handle = graph_y_yhat_yd(t, p, p_hat, p_c, 'p', []);
-        
+
         subplot(8,2,9)
         hold on
         theta_handle = graph_y_yhat_yd(t, theta, theta_hat, theta_c, '\theta', []);
-        
+
         subplot(8,2,10)
         hold on
         q_handle = graph_y_yhat_yd(t, q, q_hat, q_c, 'q', []);
-        
+
         subplot(8,2,11)
         hold on
         chi_handle = graph_y_yhat_yd(t, chi, chi_hat, chi_c, '\chi', []);
-        
+
         subplot(8,2,12)
         hold on
         r_handle = graph_y_yhat_yd(t, r, r_hat, r_c, 'r', []);
-        
+
         subplot(8,2,13)
         hold on
         delta_e_handle = graph_y(t, delta_e, [], 'b');
         ylabel('\delta_e')
-        
+
         subplot(8,2,14)
         hold on
         delta_a_handle = graph_y(t, delta_a, [], 'b');
@@ -146,14 +149,18 @@ function plotMAVStateVariables(uu)
         hold on
         delta_r_handle = graph_y(t, delta_r, [], 'b');
         ylabel('\delta_r')
-        
+
         subplot(8,2,16)
         hold on
         delta_t_handle = graph_y(t, delta_t, [], 'b');
         ylabel('\delta_t')
-        
+
+        gif_frame_idx = 1;
+        gif_filename = 'state_variables.gif';
+
     % at every other time step, redraw state variables
-    else 
+    else
+       set(0, 'CurrentFigure', h_fig2);
        graph_y_yhat_yd(t, pn, pn_hat, pn_c, 'p_n', pn_handle);
        graph_y_yhat_yd(t, pe, pe_hat, pe_c, 'p_e', pe_handle);
        graph_y_yhat_yd(t, h, h_hat, h_c, 'h', h_handle);
@@ -171,13 +178,24 @@ function plotMAVStateVariables(uu)
        graph_y(t, delta_r, delta_r_handle);
        graph_y(t, delta_t, delta_t_handle);
     end
+    set(0, 'CurrentFigure', h_fig2);
+    frame = getframe(h_fig2);
+    im = frame2im(frame);
+    [imind, cm] = rgb2ind(im, 256);
+
+    if gif_frame_idx == 1
+        imwrite(imind, cm, gif_filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.1);
+    else
+        imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.1);
+    end
+    gif_frame_idx = gif_frame_idx + 1;
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % graph y with lable mylabel
 function handle = graph_y(t, y, handle, color)
-  
+
   if isempty(handle),
     handle    = plot(t,y,color);
   else
@@ -189,7 +207,7 @@ function handle = graph_y(t, y, handle, color)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % graph y and yd with lable mylabel
 function handle = graph_y_yd(t, y, yd, lab, handle)
-  
+
   if isempty(handle),
     handle(1)    = plot(t,y,'b');
     handle(2)    = plot(t,yd,'g--');
@@ -210,7 +228,7 @@ function handle = graph_y_yd(t, y, yd, lab, handle)
 % plot the variable y in blue, its estimated value yhat in green, and its 
 % desired value yd in red, lab is the label on the graph
 function handle = graph_y_yhat_yd(t, y, yhat, yd, lab, handle)
-  
+
   if isempty(handle),
     handle(1)   = plot(t,y,'b');
     handle(2)   = plot(t,yhat,'g--');
@@ -243,6 +261,6 @@ function out=sat(in, low, high)
       out = in;
   end
 
-% end sat  
+
 
 

@@ -141,30 +141,31 @@ function sys=mdlDerivatives(t,x,uu, MAV)
     m     = uu(5);
     n     = uu(6);
     
-    pndot = 
+    pndot = u*(e0^2+e1^2-e2^2-e3^2) + v*2*(e1*e2-e0*e3) + w*2*(e1*e3+e0*e2);
     
-    pedot = 
+    pedot = u*2*(e1*e2+e0*e3) + v*(e0^2-e1^2+e2^2-e3^2) + w*2*(e2*e3-e0*e1);
     
-    pddot = 
+    pddot = u*2*(e1*e3-e0*e2) + v*2*(e2*e3+e0*e1) + w*(e0^2-e1^2-e2^2+e3^2);
     
-    udot = 
+    udot = r*v-q*w + fx/MAV.mass;
     
-    vdot = 
+    vdot = p*w-r*u + fy/MAV.mass;
     
-    wdot = 
+    wdot = q*u-p*v + fz/MAV.mass;
        
-    e0dot = 
-    e1dot = 
-    e2dot = 
-    e3dot = 
+    e0dot = 0.5*(e1*(-p)+e2*(-q)+e3*(-r));
+    e1dot = 0.5*(e0*p+e2*r+e3*(-q));
+    e2dot = 0.5*(e0*q+e1*(-r)+e3*(p));
+    e3dot = 0.5*(e0*r+e1*q+e2*(-p));
         
-    pdot = 
+    pdot = MAV.Gamma1*p*q-MAV.Gamma2*q*r+MAV.Gamma3*ell+MAV.Gamma4*n;
     
-    qdot = 
-    rdot =
+    qdot = MAV.Gamma5*p*r-MAV.Gamma6*(p^2-r^2)+m/MAV.Jy;
+    rdot = MAV.Gamma7*p*q-MAV.Gamma1*q*r+MAV.Gamma4*ell+MAV.Gamma8*n;
         
 
 sys = [pndot; pedot; pddot; udot; vdot; wdot; e0dot; e1dot; e2dot; e3dot; pdot; qdot; rdot];
+disp([pndot pedot pddot udot vdot wdot])
 
 % end mdlDerivatives
 
@@ -188,9 +189,28 @@ sys = [];
 %=============================================================================
 %
 function sys=mdlOutputs(t,x)
-    y = [...
-        ];
-sys = y;
+    % quaternion 추출
+    e0 = x(7);
+    e1 = x(8);
+    e2 = x(9);
+    e3 = x(10);
+
+    % quaternion -> euler 변환
+    [phi, theta, psi] = Quaternion2Euler(e0, e1, e2, e3);
+
+    % radian -> degree 변환 (viewer가 degree로 기대할 경우)
+    phi = rad2deg(phi);
+    theta = rad2deg(theta);
+    psi = rad2deg(psi);
+
+    % 출력 벡터: [position(3), velocity(3), euler(3), angular rates(3)]
+    sys = [
+        x(1); x(2); x(3);   % position pn, pe, pd
+        x(4); x(5); x(6);   % velocity u, v, w
+        phi; theta; psi;    % euler angles
+        x(11); x(12); x(13) % angular rates p, q, r
+    ];
+
 
 % end mdlOutputs
 
