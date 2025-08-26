@@ -1,208 +1,316 @@
 %% Hover2Cruise trajectory
 % August, 2025 by haein Jeon
-% Using 3D missile guidance to generate trajectory
+% Using 3D missile guidance to generate trajectory + Attitude injection
+
+%% Hover2Cruise trajectory
+% August, 2025 by haein Jeon
+% Using 3D missile guidance to generate trajectory + Attitude injection
+% - Plan A: BusSelector에서 phi/theta 명령 출력 포트에 주입
+% - Plan B: 실패 시, 신호 라벨(roll/pitch/phi/theta + cmd/des/ref/command)로 라인 스캔 후 주입
+
+%% Hover2Cruise trajectory + Ref injection (chi_des / Vel_bIc_des / chi_dot_des)
+% One-shot script by ChatGPT (합본)
+clear; clc;
+
+%% Toggles
+USE_MY_CMD       = 1;   % 1: 아래 My_* 레퍼런스 사용, 0: 모델 원래 신호 사용
+USE_TEST_STEP_CHI= 0;   % 1: chi_des에 1.0~1.2s +20deg 스텝 강제 주입 (반응 체크용)
+model            = 'GUAM';
 
 %% --- Model / Input mode ---
-model = 'GUAM';
-userStruct.variants.refInputType = 3;   % RefInputEnum.TIMESERIES 에 해당
+userStruct.variants.refInputType = 3;   % RefInputEnum.TIMESERIES
 
-%% Initial condition
-missile.V = 8;  % m/s 
-missile.x = 0;
-missile.y = 0;
-missile.z = 0;   % initial position
-    
-tgt.x = 150; tgt.y = 0; tgt.z = -100;          % desired position, inertial reference, -z is up 
+%% Initial condition / target
+missile.V = 8;  % m/s
+missile.x = 0;  missile.y = 0;  missile.z = 0;   % NED (-z up)
+tgt.x = 150; tgt.y = 0; tgt.z = -100;
 
-% Initial LOS &  LOS angle 
+% Initial LOS & LOS angles
 RTP   = [(tgt.x - missile.x), (tgt.y - missile.y), (tgt.z - missile.z)];
 R     = norm(RTP);
-thetaL = asin(max(-1,min(1,RTP(3)/R)));    % LOS elev
-psiL   = atan2(RTP(2), RTP(1));            % LOS az
-thetaM = deg2rad(10);                      % M elev
-psiM   = deg2rad(10);                      % M az
+thetaL = asin(max(-1,min(1,RTP(3)/R)));   % LOS elev
+psiL   = atan2(RTP(2), RTP(1));           % LOS az
+thetaM = deg2rad(10);                     % missile elev (LOS frame)
+psiM   = deg2rad(10);                     % missile az (LOS frame)
 
-% Initial velocity(Inertial Frame)
-missile.xV = missile.V * cos(thetaL + thetaM) * cos(psiM + psiL);
-missile.yV = missile.V * cos(thetaL + thetaM) * sin(psiM + psiL);
-missile.zV = missile.V * sin(thetaL + thetaM);
+% Initial velocity via LOS triad
+e_r     = [cos(thetaL)*cos(psiL);  cos(thetaL)*sin(psiL);  sin(thetaL)];
+e_psi   = [-sin(psiL);             cos(psiL);              0          ];
+e_theta = [-sin(thetaL)*cos(psiL); -sin(thetaL)*sin(psiL); cos(thetaL)];
+uL = [cos(thetaM)*cos(psiM);  cos(thetaM)*sin(psiM);  sin(thetaM)];
+uI = e_r*uL(1) + e_psi*uL(2) + e_theta*uL(3);
+vI = missile.V * uI;
+missile.xV = vI(1); missile.yV = vI(2); missile.zV = vI(3);
 
-% Lyapunov gains
+% gains
 c1 = 5; c2 = 5;
 
-% desired acceleration 
+% desired acceleration in LOS frame (a_psi, a_theta)
 accelY = -(missile.V)^2 / R * sin(psiM) ...
-         + (missile.V)^2 / (4*R) * sin(2*thetaM) * tan(thetaL) * sin(2*psiM) ...
-         - c2 * (missile.V)^2 / R * cos(thetaM) * sin(psiM/4) * cos(psiM/4);
-
+       + (missile.V)^2 / (4*R) * sin(2*thetaM) * tan(thetaL) * sin(2*psiM) ...
+       - c2 * (missile.V)^2 / R * cos(thetaM) * sin(psiM/4) * cos(psiM/4);
 accelZ = -(missile.V)^2 / R * sin(thetaM) * cos(psiM) ...
-         - (missile.V)^2 / R * cos(thetaM) * tan(thetaL) * (sin(psiM))^2 ...
-         - c1 * (missile.V)^2 / R * sin(thetaM/4) * cos(thetaM/4);
+       - (missile.V)^2 / R * cos(thetaM) * tan(thetaL) * (sin(psiM))^2 ...
+       - c1 * (missile.V)^2 / R * sin(thetaM/4) * cos(thetaM/4);
 
 %% Simulation set
-dt        = 1e-4;      % step
-Smax      = 100;       % max horizon (s) 안전상한
+dt        = 1e-4;
+Smax      = 100;
 Niter     = max(2, round(Smax/dt));
-accel_max = 10 * 9.81; % accel saturation
-tol_R     = 0.01;      % interception tolerance (m)
+accel_max = 10 * 9.81;
+tol_R     = 0.01;
+g         = 9.81;
 
-%% Preallocate logger
+%% Preallocate logs
 t  = nan(Niter,1);
-mx = nan(Niter,1); 
-my = nan(Niter,1); 
-mz = nan(Niter,1);
-mxV= nan(Niter,1); 
-myV= nan(Niter,1); 
-mzV= nan(Niter,1);
-thM= nan(Niter,1); 
-thL= nan(Niter,1); 
-psM= nan(Niter,1); 
-psL= nan(Niter,1);
+mx = nan(Niter,1);  my = nan(Niter,1);  mz = nan(Niter,1);
+mxV= nan(Niter,1);  myV= nan(Niter,1);  mzV= nan(Niter,1);
+thM= nan(Niter,1);  thL= nan(Niter,1);  psM= nan(Niter,1);  psL= nan(Niter,1);
+aN_log = nan(Niter,1); aE_log = nan(Niter,1); aD_log = nan(Niter,1);
+phi_cmd_log = nan(Niter,1); theta_cmd_log = nan(Niter,1); psi_cmd_log = nan(Niter,1);
 
-%% -Main loop (record first, then check: t(k) always finite) ---
+%% Main loop
 k_end = Niter;
 for k = 1:Niter
-    % 시간 먼저 기록 -> timeseries 시간 NaN 방지
     t(k) = (k-1)*dt;
 
-    % 거리/LOS 갱신
     RTP = [(tgt.x - missile.x), (tgt.y - missile.y), (tgt.z - missile.z)];
     R   = norm(RTP);
 
     m = max(-1, min(1, RTP(3)/R));
     thetaL = asin(m);
-    thetaL = max(-pi/2+1e-6, min(pi/2-1e-6, thetaL));  % tan 폭주 방지
+    thetaL = max(-pi/2+1e-6, min(pi/2-1e-6, thetaL));
     psiL   = atan2(RTP(2), RTP(1));
 
-    % 미사일 각속도 (네 수식)
+    % LOS triad update
+    e_r     = [cos(thetaL)*cos(psiL);  cos(thetaL)*sin(psiL);  sin(thetaL)];
+    e_psi   = [-sin(psiL);             cos(psiL);              0          ];
+    e_theta = [-sin(thetaL)*cos(psiL); -sin(thetaL)*sin(psiL); cos(thetaL)];
+
+    % angle rates
     thetaM_dot = (accelZ)/(missile.V) ...
-                 + missile.V/R * cos(thetaM) * tan(thetaL) * (sin(psiM))^2 ...
-                 + missile.V/R * sin(thetaM) * cos(psiM);
-
+               + missile.V/R * cos(thetaM) * tan(thetaL) * (sin(psiM))^2 ...
+               + missile.V/R * sin(thetaM) * cos(psiM);
     psiM_dot = (accelY)/(missile.V * cos(thetaM)) ...
-               - (missile.V)/R * sin(thetaM) * tan(thetaL) * sin(psiM) * cos(psiM) ...
-               + missile.V / (R * cos(thetaM)) * (sin(thetaM))^2 * sin(psiM) ...
-               + missile.V / R * cos(thetaM) * sin(psiM);
+             - (missile.V)/R * sin(thetaM) * tan(thetaL) * sin(psiM) * cos(psiM) ...
+             + missile.V / (R * cos(thetaM)) * (sin(thetaM))^2 * sin(psiM) ...
+             + missile.V / R * cos(thetaM) * sin(psiM);
 
-    % 각 업데이트
     thetaM = thetaM + thetaM_dot*dt;
     psiM   = psiM   + psiM_dot*dt;
 
-    % 가속 재계산 (네 수식)
+    % re-calc accel
     accelY = -(missile.V)^2 / R * sin(psiM) ...
-             + (missile.V)^2 / (4*R) * sin(2*thetaM) * tan(thetaL) * sin(2*psiM) ...
-             - c2 * (missile.V)^2 / R * cos(thetaM) * sin(psiM/4) * cos(psiM/4);
-
+           + (missile.V)^2 / (4*R) * sin(2*thetaM) * tan(thetaL) * sin(2*psiM) ...
+           - c2 * (missile.V)^2 / R * cos(thetaM) * sin(psiM/4) * cos(psiM/4);
     accelZ = -(missile.V)^2 / R * sin(thetaM) * cos(psiM) ...
-             - (missile.V)^2 / R * cos(thetaM) * tan(thetaL) * (sin(psiM))^2 ...
-             - c1 * (missile.V)^2 / R * sin(thetaM/4) * cos(thetaM/4);
+           - (missile.V)^2 / R * cos(thetaM) * tan(thetaL) * (sin(psiM))^2 ...
+           - c1 * (missile.V)^2 / R * sin(thetaM/4) * cos(thetaM/4);
 
-    % 가속 한계
+    % saturation
     a_norm = hypot(accelY, accelZ);
     if a_norm > accel_max
         s = accel_max / a_norm;
-        accelY = accelY * s;
-        accelZ = accelZ * s;
+        accelY = accelY * s; accelZ = accelZ * s;
     end
 
-    % 속도(크기 V 유지) -> 관성프레임 성분
-    missile.xV = missile.V * cos(thetaL + thetaM) * cos(psiM + psiL);
-    missile.yV = missile.V * cos(thetaL + thetaM) * sin(psiM + psiL);
-    missile.zV = missile.V * sin(thetaL + thetaM);
+    % LOS accel -> NED accel (a_r=0)
+    aNED = accelY*e_psi + accelZ*e_theta;
+    aN = aNED(1); aE = aNED(2); aD = aNED(3);
+    aN_log(k)=aN; aE_log(k)=aE; aD_log(k)=aD;
 
-    % 위치 적분
+    % accel -> attitude (for logging only)
+    psi_acc = atan2(aE, aN);
+    denom = max(0.5, g - aD);
+    phi_cmd   = atan2(hypot(aN,aE), denom);
+    theta_cmd = atan2( aN*cos(psi_acc) + aE*sin(psi_acc), denom );
+    psi_cmd   = psi_acc;
+    phi_cmd_log(k)=phi_cmd; theta_cmd_log(k)=theta_cmd; psi_cmd_log(k)=psi_cmd;
+
+    % velocity update (constant speed)
+    uL = [cos(thetaM)*cos(psiM);  cos(thetaM)*sin(psiM);  sin(thetaM)];
+    uI = e_r*uL(1) + e_psi*uL(2) + e_theta*uL(3);
+    vI = missile.V * uI;
+    missile.xV = vI(1); missile.yV = vI(2); missile.zV = vI(3);
+
+    % integrate pos
     missile.x = missile.x + missile.xV*dt;
     missile.y = missile.y + missile.yV*dt;
     missile.z = missile.z + missile.zV*dt;
 
-    % 로깅
-    mx(k)=missile.x;  my(k)=missile.y;  mz(k)=missile.z;
+    mx(k)=missile.x; my(k)=missile.y; mz(k)=missile.z;
     mxV(k)=missile.xV; myV(k)=missile.yV; mzV(k)=missile.zV;
     thM(k)=thetaM; thL(k)=thetaL; psM(k)=psiM; psL(k)=psiL;
 
-    % --- 요격 판정 (로깅 이후 검사: t(k) 유효) ---
     if R <= tol_R
         fprintf('Interception at t = %.6f s (k=%d, R=%.4g m)\n', t(k), k, R);
-        k_end = k;
-        break;
+        k_end = k; break;
     end
 end
 
-%% --- Trim to finite, valid samples ---
+%% Trim logs
 valid = isfinite(t);
-if any(valid)
-    last = find(valid,1,'last');
-else
-    last = 0;
-end
-k_end = min(k_end, max(2,last));  % 최소 2샘플 보장
-
+if any(valid), last = find(valid,1,'last'); else, last = 0; end
+k_end = min(k_end, max(2,last));
 t      = t(1:k_end);
 pos    = [mx(1:k_end),  my(1:k_end),  mz(1:k_end)];
 vel_i  = [mxV(1:k_end), myV(1:k_end), mzV(1:k_end)];
 
-% 극단 상황: 샘플 2개 미만이면 패딩
 if numel(t) < 2
     t     = [0; dt];
     pos   = [pos(1,:);   pos(1,:)];
     vel_i = [vel_i(1,:); vel_i(1,:)];
 end
 
-%% --- chi / chi_dot (x–y 평면 방위각) ---
-chi  = atan2(vel_i(:,2), vel_i(:,1));
+%% chi / chi_dot
+chi  = unwrap(atan2(vel_i(:,2), vel_i(:,1)));
 chid = [0; diff(chi)./diff(t)];
-if numel(chid) ~= numel(t)
-    chid(end+1) = chid(end);
+if numel(chid) ~= numel(t), chid(end+1) = chid(end); end
+
+%% Build Ref timeseries
+PhiCmd_ts   = timeseries(phi_cmd_log(1:k_end),   t);   % (로그용/미사용)
+ThetaCmd_ts = timeseries(theta_cmd_log(1:k_end), t);   % (로그용/미사용)
+PsiCmd_ts   = timeseries(psi_cmd_log(1:k_end),   t);   % (로그용/미사용)
+aCmdNED_ts  = timeseries([aN_log(1:k_end), aE_log(1:k_end), aD_log(1:k_end)], t);
+
+vel = vel_i;  % heading-frame = inertial 취급
+RefInput.Vel_bIc_des = timeseries(vel,   t);
+RefInput.pos_des     = timeseries(pos,   t);
+RefInput.chi_des     = timeseries(chi,   t);
+RefInput.chi_dot_des = timeseries(chid,  t);
+RefInput.vel_des     = timeseries(vel_i, t);
+
+% === 우리가 "주입"할 신호들 ===
+My_chi_des     = RefInput.chi_des;        % 1x1
+My_chi_dot_des = RefInput.chi_dot_des;    % 1x1
+My_Vel_bIc_des = RefInput.Vel_bIc_des;    % Nx3
+
+% 테스트: chi_des 스텝
+if USE_TEST_STEP_CHI
+    tmp = My_chi_des.Data;
+    tmp(t>=1 & t<1.2) = tmp(t>=1 & t<1.2) + deg2rad(20);
+    My_chi_des = timeseries(tmp, t);
 end
 
-%% --- Heading frame 속도 ---
-% 별도 회전유틸 없으면 heading=0 가정(vel=vel_i)
-% (유틸 사용 시)
-% addpath(genpath('lib'));  % QrotZ, Qtrans 제공 경로
-% q   = QrotZ(chi);
-% vel = Qtrans(q, vel_i);
-vel = vel_i;  % 여기서는 동일 취급
-
-%% --- GUAM RefInput (timeseries) 패킹 ---
-RefInput.Vel_bIc_des = timeseries(vel,   t);   % heading-frame velocity
-RefInput.pos_des     = timeseries(pos,   t);   % inertial position
-RefInput.chi_des     = timeseries(chi,   t);   % heading angle
-RefInput.chi_dot_des = timeseries(chid,  t);   % heading rate
-RefInput.vel_des     = timeseries(vel_i, t);   % inertial velocity
-
-% 중요: GUAM에 넘길 target에는 RefInput '만' 넣자 (x/y/z 제거)
-clear target
-target.RefInput = RefInput;
-
-%% --- Simulink 준비 ---
-%% --- Simulink 준비 (창 안 띄우고 빠르게) ---
+%% Push to base WS
+clear target; target.RefInput = RefInput;
 if ~bdIsLoaded(model), load_system(model); end
+set_param(model,'FastRestart','off');
 
-% 빠른 실행 옵션
-set_param(model,'SimulationMode','accelerator','FastRestart','on');
-set_param(model,'SaveTime','off','SaveState','off','SaveOutput','off',...
+assignin('base','USE_MY_CMD',       double(USE_MY_CMD));
+assignin('base','target',           target);
+assignin('base','userStruct',       userStruct);
+assignin('base','My_chi_des',       My_chi_des);
+assignin('base','My_chi_dot_des',   My_chi_dot_des);
+assignin('base','My_Vel_bIc_des',   My_Vel_bIc_des);
+
+%% Compile (resolve variants)
+try, set_param(model,'SimulationCommand','update'); catch, end
+
+%% === Inject at chi_des / Vel_bIc_des / chi_dot_des ===
+% 네 디버그에서 나온 정확한 후보 3곳을 우선 시도:
+% 1) .../Baseline/Convert Velocity and Position Error To Control Frame/Bus Selector2: chi_des,pos_des
+% 2) .../Baseline/Perturbation Variables for Linear Control/Bus Selector2: Vel_bIc_des,chi_dot_des
+% 3) .../BASELINE/Bus Selector7: Vel_bIc_des,chi_des
+
+cands = {
+ 'Vehicle Generalized Control/Lift+Cruise Control/BASELINE/Baseline/Convert Velocity and Position Error To Control Frame/Bus Selector2'
+ 'Vehicle Generalized Control/Lift+Cruise Control/BASELINE/Baseline/Perturbation Variables for Linear Control/Bus Selector2'
+ 'Vehicle Generalized Control/Lift+Cruise Control/BASELINE/Bus Selector7'
+};
+
+% 각각에서 출력 이름을 읽어 필요한 신호만 주입
+needList = { 'chi_des', 'Vel_bIc_des', 'chi_dot_des' };
+varMap.chi_des     = 'My_chi_des';
+varMap.chi_dot_des = 'My_chi_dot_des';
+varMap.Vel_bIc_des = 'My_Vel_bIc_des';
+
+did = false;
+for ci = 1:numel(cands)
+    bsFull = [model '/Vehicle Simulation/' cands{ci}];  % 절대경로로 조합
+    if ~exist_block(bsFull), continue; end
+    try
+        ph  = get_param(bsFull,'PortHandles');
+        sig = strtrim(get_param(bsFull,'OutputSignals'));
+        toks = regexp(sig,'\s*,\s*','split'); toks = toks(~cellfun('isempty',toks));
+        for ksig = 1:numel(needList)
+            key = needList{ksig};
+            idx = find(strcmp(toks, key), 1, 'first');
+            if ~isempty(idx)
+                fromVar = varMap.(key);
+                inject_switch_on_selector_output(bsFull, idx, fromVar, 'USE_MY_CMD', ['UseMy_' key]); 
+                fprintf('[inject] %s -> %s (on %s / port #%d)\n', key, fromVar, bsFull, idx);
+                did = true;
+            end
+        end
+    catch ME
+        warning('주입 시도 실패(%s): %s', bsFull, ME.message);
+    end
+end
+
+if ~did
+    error('주입 실패: chi_des / Vel_bIc_des / chi_dot_des 에 해당하는 출력 포트를 못 찾았습니다.');
+end
+
+%% Sim & quick plot
+set_param(model,'SimulationMode','accelerator','StopTime', sprintf('%.6f', t(end)), ...
+                 'SaveTime','off','SaveState','off','SaveOutput','off', ...
                  'ReturnWorkspaceOutputs','off','SignalLogging','off');
-
-% 요격 시점까지만 실행 (t(end) = 우리가 만든 궤적의 마지막 시간)
-set_param(model,'StopTime', sprintf('%.6f', t(end)));
-
-% 모델 창 열지 않고 실행
 try
-    % simSetup이 SimulationInput을 반환하는 배포본이면:
-    SimIn = simSetup();
-    simOut = sim(SimIn);
+    SimIn = simSetup(); simOut = sim(SimIn);
 catch
-    % 반환값 없는 형태면 그냥 초기화만 하고 실행
-    simSetup;
+    try simSetup; end %#ok<TRYNC>
     simOut = sim(model);
 end
 
-% 필요하면 여기서 결과만 따로 플롯 (그림 렌더링 느리면 꺼두기)
-% set(groot,'DefaultFigureVisible','off');  % 플롯 렌더링 임시 OFF
-% ... plot code ...
-set(groot,'DefaultFigureVisible','on');   % 다시 ON
+try
+    figure('Name','Injected references');
+    subplot(3,1,1); plot(My_chi_des.Time, My_chi_des.Data); grid on; ylabel('\chi_{des} (rad)'); title('Injected references');
+    subplot(3,1,2); plot(My_chi_dot_des.Time, My_chi_dot_des.Data); grid on; ylabel('\dot{\chi}_{des} (rad/s)');
+    subplot(3,1,3); plot(My_Vel_bIc_des.Time, My_Vel_bIc_des.Data); grid on; ylabel('Vel\_bIc\_des (m/s)'); xlabel('t (s)');
+catch
+end
 
+%% ============= Local helpers =============
+function inject_switch_on_selector_output(bsPath,outIdx,fromVar,useVar,tag)
+    parent = get_param(bsPath,'Parent');
+    ph  = get_param(bsPath,'PortHandles');  op  = ph.Outport(outIdx);
+    ln  = get_param(op,'Line');  if ln==-1, error('Outport(%d)에 라인이 없습니다.', outIdx); end
+    dstPorts = get_param(ln,'DstPortHandle');
+    delete_line(ln);
 
+    pos = get_param(bsPath,'Position'); y0 = pos(2)+40+70*outIdx;
+    sw = [parent '/' tag '_SW'];  fw = [parent '/' tag '_FW'];  cv = [parent '/' tag '_CONST'];
+    if exist_block(sw), delete_block(sw); end
+    if exist_block(fw), delete_block(fw); end
+    if ~exist_block(cv)
+        add_block('simulink/Sources/Constant', cv, ...
+                  'Value', useVar, 'Position',[pos(1)+60 y0+30 pos(1)+90 y0+50]);
+    end
+    add_block('simulink/Sources/From Workspace', fw, ...
+              'VariableName', fromVar, 'Interpolate','on','SampleTime','-1', ...
+              'Position',[pos(1)+60 y0 pos(1)+90 y0+20]);
+    add_block('simulink/Signal Routing/Switch', sw, ...
+              'Criteria','u2 >= Threshold','Threshold','0.5', ...
+              'Position',[pos(1)+120 y0 pos(1)+180 y0+40]);
+
+    % Selector out -> Switch u3 (기존), FromWS -> u1(내 것), Const -> u2(조건)
+    add_line(parent, [get_param(bsPath,'Name') '/' num2str(outIdx)], [get_param(sw,'Name') '/3'],'autorouting','on');
+    add_line(parent, [get_param(fw,'Name') '/1'],                   [get_param(sw,'Name') '/1'],'autorouting','on');
+    add_line(parent, [get_param(cv,'Name') '/1'],                   [get_param(sw,'Name') '/2'],'autorouting','on');
+
+    % Switch out -> 원래 목적지들
+    if ~iscell(dstPorts), dstPorts={dstPorts}; end
+    for i=1:numel(dstPorts)
+        dp = dstPorts{i};
+        add_line(parent, [get_param(sw,'Name') '/1'], ...
+            [get_param(get_param(dp,'Parent'),'Name') '/' num2str(get_param(dp,'PortNumber'))], 'autorouting','on');
+    end
+end
+
+function tf = exist_block(path)
+    try get_param(path,'Handle'); tf=true; catch, tf=false; end
+end
 
 
 % % prescibe inertial position (NED)
@@ -537,3 +645,4 @@ set(groot,'DefaultFigureVisible','on');   % 다시 ON
 %     chi  = unwrap(atan2(VE, VN));
 %     chid = [0; diff(chi)./diff(time)]; chid(end)=0;
 % end
+
