@@ -98,7 +98,7 @@ SimPar.Environment.Turbulence.RandomSeedPGust         = SimIn.Environment.Turbul
 SimPar.Environment.Turbulence.WindAt5kft          = SimIn.Environment.Turbulence.WindAt5kft;
 SimPar.Environment.Turbulence.WindDirectionAt5kft = SimIn.Environment.Turbulence.WindDirectionAt5kft;
 SimPar.Environment.Turbulence.MeanWindGain        = SimIn.Environment.Turbulence.MeanWindGain;
-SimPar.Environment.Turbulence.intesity            = 1; %intensity 1=light, 2=moderate, 3=severe
+SimPar.Environment.Turbulence.intesity            = SimIn.Environment.Turbulence.IntensityLevel; %intensity 1=light, 2=moderate, 3=severe % 원래값 : 1
 
 %% Define Winds Parameters
 SimPar.Environment.Winds.Gust_wHh   = SimIn.Environment.Winds.Gust_wHh;% (deg) From North

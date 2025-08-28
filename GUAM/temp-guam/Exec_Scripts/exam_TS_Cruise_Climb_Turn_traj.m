@@ -2,6 +2,7 @@
 model = 'GUAM';
 % use timeseries input
 userStruct.variants.refInputType=3; % 1=FOUR_RAMP, 2= ONE_RAMP, 3=Timeseries, 4=Piecewise Bezier, 5=Default(doublets)
+userStruct.variants.ctrlType=3;
 
 %% setup trajectory and pass to target
 time        = [0 10:1:40]'; % Column vector of time points

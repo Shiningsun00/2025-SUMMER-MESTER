@@ -47,9 +47,8 @@ ft2kts = 1/(1852.0/0.3048/3600); % Obtained from setUnits... Old = 0.592484; % C
 
 % *************************************************************************
 fprintf('Control Scheduler \n');
-
 % *********************** USER INPUT SECTION ******************************
-fprintf('Concatenating Trim Files');
+fprintf('Concatenating Trim Files\n');
 % Provide the input trim path and filenames (Trim_Ver1p0)
 % fpath       = 'C:\Users\macheson\Desktop\TTT_AS_Git\GTM-GUAM-simulation\vehicles\Lift+Cruise\Trim\Trim_Figs\Trim_Ver1p0';
 % trim_fnames = {'Trim_Case_-6.1_RInf_WH-11.7_XEQ.mat', 'Trim_Case_6_RInf_WH0_XEQ.mat', 'Trim_Case_6.1_RInf_WH11.7_XEQ.mat'}; % Trim_Ver1p0
@@ -64,7 +63,7 @@ fprintf('Concatenating Trim Files');
 
 % Provide the input trim path and filenames (Trim_Ver2p0)
 %fpath       = 'C:\Users\macheson\Desktop\TTT_AS_Git\GTM-GUAM-simulation\vehicles\Lift+Cruise\Trim\Trim_Figs\Trim_Ver3p0';
-fpath       = 'C:\Users\macheson\Desktop\TTT_AS_Git\GTM-GUAM-simulation\vehicles\Lift+Cruise\Trim\Trim_Figs\Trim_Ver4p0';
+fpath       = 'C:\Users\mjki1\Desktop\2025-SUMMER-MESTER\GUAM\temp-guam\vehicles\Lift+Cruise\Trim';
 
 %trim_fnames = {'Trim_Case_-6.3_RInf_WH-11.7_XEQ.mat', 'Trim_Case_-6.3_RInf_WH-7.5_XEQ.mat', 'Trim_Case_6.2_RInf_WH0_XEQ.mat'}; % Trim_Ver3p0
 %trim_fnames = {'Trim_Case_-6.3_RInf_WH-7.5_XEQ.mat', 'Trim_Case_6.2_RInf_WH0_XEQ.mat'}; % Trim_Ver3p0
@@ -78,9 +77,9 @@ out_cntr_fname = './trim_table_Poly_ConcatVer4p0.mat'; % Output file for Trim_Ve
 % *********************** END OF USER INPUT SECTION ***********************
 
 % Specify the filename for the trim output file that contains the combined files
-out_trim_fpath       = 'C:\Users\macheson\Desktop\TTT_AS_Git\GTM-GUAM-simulation\vehicles\Lift+Cruise';
-out_cntr_fpath       = 'C:\Users\macheson\Desktop\TTT_AS_Git\GTM-GUAM-simulation\vehicles\Lift+Cruise';
-Concatenate_Trim_Files; % Concatenate trim files 
+out_trim_fpath       = 'C:\Users\mjki1\Desktop\2025-SUMMER-MESTER\GUAM\temp-guam\vehicles\Lift+Cruise';
+out_cntr_fpath       = 'C:\Users\mjki1\Desktop\2025-SUMMER-MESTER\GUAM\temp-guam\vehicles\Lift+Cruise';
+%Concatenate_Trim_Files; % Concatenate trim files 
 
 % Process the data 
 load(fullfile(out_trim_fpath, out_trim_fname)); % Load resultant trim table for Trim version
@@ -112,12 +111,13 @@ end
 
 % State Cost 
 %         ui   wi   qi   u w q 
-Qlon0 = [ 0.01 0.01 1000 0 0 0]'; % original 
+%Qlon0 = [ 0.01 0.01 1000 0 0 0]'; % original 
 %Qlon0 = [ 0.02 0.02 100 0 0 0]'; % original 
-
+Qlon0 = [0.01 1000 0 0 0 0]'; % [0.01 100 0 0 0 0]'
 
 % Control acceleration cost
-Rlon0 = [1 1 1]'; % original
+%Rlon0 = [1 1 1]'; % original
+Rlon0 = [1 1 1 1 1 1 1 1 1 1000 10000000]';
 
 % Control allocation weighting
 %       [ omp1:omp9         dele dflap    th] 
@@ -131,32 +131,33 @@ Wlon = repmat(Wlon0, [1,N_trim,M_trim,L_trim]);
 
 % State Cost 
 %         vi   pi   ri   v p r 
-Qlat0 = [ 0.01 1000 1000 0 0 0]'; 
+%Qlat0 = [ 0.01 1000 1000 0 0 0]'; 
+Qlat0 = [100 1500 0 0 0 0]'; % [100 1500 0 0 0 0]'
 
 % Control acceleration cost
-Rlat0 = [1 1 1]';
-
+%Rlat0 = [1 1 1]';
+Rlat0 = [1 1 1 1 1 1 1 1 1000 1000]';
 % Control allocation weighting
 %       [ omp1:omp9      dela delr phi] 
 Wlat0 = [1 1 1 1 1 1 1 1 1000 1000 1]'; % Modified effector output order to match the simulation allocation
 %Wlat0 = [1 1 1 1 1 1 1 1 1000 1000 0.2]'; % Modified effector output order to match the simulation allocation
 
-Qlat = repmat(Qlat0, [1,N_trim,M_trim,L_trim]);
+Qlat = repmat(Qlat0, [1,N_trim,M_trim,L_trim]); % repmat(A,m,n): 원본행렬 A를 행방향 m, 열방향 m만큼 반복해서 복제
 Rlat = repmat(Rlat0, [1,N_trim,M_trim,L_trim]);
 Wlat = repmat(Wlat0, [1,N_trim,M_trim,L_trim]);
 
 % Specify system sizes
 Nx_lon = 4;
-Ni_lon = 3;
+Ni_lon = 2; % 4
 Nu_lon = 11;
-Nr_lon = 3;
-Nv_lon = 1;
+Nr_lon = 2; % 4
+Nv_lon = 0; % 0
 
 Nx_lat = 4;
-Ni_lat = 3;
+Ni_lat = 2; % 4
 Nu_lat = 10;
-Nr_lat = 2;
-Nv_lat = 1;
+Nr_lat = 2; % 4
+Nv_lat = 0; % 0
 
 % *************************************************************************
 %       Design Lon & Lat Controllers for all schedule intervals
@@ -185,12 +186,12 @@ for kk = 1:L_trim % R (turn radius schedule interval)
       Trans_pnt     = Trans_Table(:, jj, kk);
 
       % use the rslqr control design to get the control gains at each point
-      [lon, lon_err] = ctrl_lon(lpc, trim_pnt, rho, grav,Qlon(:,ii,jj,kk),Rlon(:,ii,jj,kk),Wlon(:,ii,jj,kk), FreeVar_pnt, Trans_pnt);
+      [lon, lon_err] = ctrl_lon2(lpc, trim_pnt, rho, grav,Qlon(:,ii,jj,kk),Rlon(:,ii,jj,kk),Wlon(:,ii,jj,kk), FreeVar_pnt, Trans_pnt);
       if lon_err
         fprintf('eq. point: (%i, %i, %i)\n',ii,jj,kk);
       end
 
-      [lat, lat_err] = ctrl_lat(lpc, trim_pnt, rho, grav,Qlat(:,ii,jj,kk),Rlat(:,ii,jj,kk),Wlat(:,ii,jj,kk), FreeVar_pnt, Trans_pnt);
+      [lat, lat_err] = ctrl_lat2(lpc, trim_pnt, rho, grav,Qlat(:,ii,jj,kk),Rlat(:,ii,jj,kk),Wlat(:,ii,jj,kk), FreeVar_pnt, Trans_pnt);
       if lat_err
         fprintf('eq. point: (%i, %i, %i)\n',ii,jj,kk);
       end
@@ -204,9 +205,9 @@ for kk = 1:L_trim % R (turn radius schedule interval)
 end
 
 % Initialize trim/controller output file variables
-UH  = reshape([XEQ_TABLE(1,:,1,1)], N_trim, 1);
-WH  = reshape([XEQ_TABLE(2,1,:,1)], M_trim, 1);
-R   = reshape([XEQ_TABLE(3,1,1,:)], L_trim, 1);
+UH  = reshape([XEQ_TABLE(1,:,1,1)], N_trim, 1); % 28개의 uh값을 하나의 row vector로 정렬
+WH  = reshape([XEQ_TABLE(2,1,:,1)], M_trim, 1); % 3개의 wh값을 하나의 row vector로 정렬
+R   = reshape([XEQ_TABLE(3,1,1,:)], L_trim, 1); % 1개의 r값을 하나의 row vector로 정렬 -> inf로 직선 운동
 
 % Original (old table lookup format) 
 XU0_interp = zeros(25, N_trim, M_trim);
@@ -217,27 +218,31 @@ Bp_lon_interp = zeros(Nx_lon, Nu_lon, N_trim, M_trim);
 Cp_lon_interp = zeros(Nx_lon, Nx_lon, N_trim, M_trim);
 Dp_lon_interp = zeros(Nx_lon, Nu_lon, N_trim, M_trim);
 
-Ac_lon_interp = zeros(Ni_lon, Ni_lon, N_trim, M_trim);
-Bc_lon_interp = zeros(Ni_lon, Nx_lon, N_trim, M_trim);
-Br_lon_interp = zeros(Ni_lon, Nr_lon, N_trim, M_trim);
-Cc_lon_interp = zeros(Nu_lon, Ni_lon, N_trim, M_trim);
-Dc_lon_interp = zeros(Nu_lon, Nx_lon, N_trim, M_trim);
-Dr_lon_interp = zeros(Nu_lon, Nr_lon, N_trim, M_trim);
+% Ac_lon_interp = zeros(Ni_lon, Ni_lon, N_trim, M_trim);
+% Bc_lon_interp = zeros(Ni_lon, Nx_lon, N_trim, M_trim);
+% Br_lon_interp = zeros(Ni_lon, Nr_lon, N_trim, M_trim);
+% Cc_lon_interp = zeros(Nu_lon, Ni_lon, N_trim, M_trim);
+% Dc_lon_interp = zeros(Nu_lon, Nx_lon, N_trim, M_trim);
+% Dr_lon_interp = zeros(Nu_lon, Nr_lon, N_trim, M_trim);
 
-Ki_lon_interp = zeros(Ni_lon, Ni_lon, N_trim, M_trim);
-Kx_lon_interp = zeros(Ni_lon, Nx_lon, N_trim, M_trim);
-Kv_lon_interp = zeros(Ni_lon, Nv_lon, N_trim, M_trim);
+Ki_lon_interp = zeros(Nu_lon, Ni_lon, N_trim, M_trim);
+Kx_lon_interp = zeros(Nu_lon, Nx_lon, N_trim, M_trim);
+% Ki_lon_interp = zeros(Ni_lon, Ni_lon, N_trim, M_trim);
+% Kx_lon_interp = zeros(Ni_lon, Nx_lon, N_trim, M_trim);
+% Kv_lon_interp = zeros(Ni_lon, Nv_lon, N_trim, M_trim);
 
-F_lon_interp  = zeros(Ni_lon, Nr_lon,N_trim, M_trim);
-G_lon_interp  = zeros(Ni_lon, Nr_lon, N_trim, M_trim);
+% F_lon_interp  = zeros(Ni_lon, Nr_lon,N_trim, M_trim);
+% G_lon_interp  = zeros(Ni_lon, Nr_lon, N_trim, M_trim);
 C_lon_interp  = zeros(Ni_lon, Nx_lon, N_trim, M_trim);
-Cv_lon_interp = zeros(Nv_lon, Nx_lon, N_trim, M_trim);
+% Cv_lon_interp = zeros(Nv_lon, Nx_lon, N_trim, M_trim);
 
-Q_lon_interp  = zeros(2*Ni_lon, 2*Ni_lon, N_trim, M_trim);
-R_lon_interp  = zeros(Ni_lon, Ni_lon, N_trim, M_trim);
+Q_lon_interp = zeros((Nx_lon+Ni_lon), (Nx_lon+Ni_lon), N_trim, M_trim);
+R_lon_interp  = zeros(Nu_lon, Nu_lon, N_trim, M_trim);
+%Q_lon_interp  = zeros(2*Ni_lon, 2*Ni_lon, N_trim, M_trim);
+%R_lon_interp  = zeros(Ni_lon, Ni_lon, N_trim, M_trim);
 
-W_lon_interp  = zeros((Nu_lon+Nv_lon), (Nu_lon+Nv_lon), N_trim, M_trim);
-B_lon_interp  = zeros(Ni_lon, (Nu_lon+Nv_lon), N_trim, M_trim);
+% W_lon_interp  = zeros((Nu_lon+Nv_lon), (Nu_lon+Nv_lon), N_trim, M_trim);
+% B_lon_interp  = zeros(Ni_lon, (Nu_lon+Nv_lon), N_trim, M_trim);
 
 
 % Pre allocate lateral directional blocks (Old format)
@@ -246,27 +251,29 @@ Bp_lat_interp = zeros(Nx_lat, Nu_lat, N_trim, M_trim);
 Cp_lat_interp = zeros(Nx_lat, Nx_lat, N_trim, M_trim);
 Dp_lat_interp = zeros(Nx_lat, Nu_lat, N_trim, M_trim);
 
-Ac_lat_interp = zeros(Ni_lat, Ni_lat, N_trim, M_trim);
-Bc_lat_interp = zeros(Ni_lat, Nx_lat, N_trim, M_trim);
-Br_lat_interp = zeros(Ni_lat, Nr_lat, N_trim, M_trim);
-Cc_lat_interp = zeros(Nu_lat, Ni_lat, N_trim, M_trim);
-Dc_lat_interp = zeros(Nu_lat, Nx_lat,N_trim, M_trim);
-Dr_lat_interp = zeros(Nu_lat, Nr_lat, N_trim, M_trim);
+% Ac_lat_interp = zeros(Ni_lat, Ni_lat, N_trim, M_trim);
+% Bc_lat_interp = zeros(Ni_lat, Nx_lat, N_trim, M_trim);
+% Br_lat_interp = zeros(Ni_lat, Nr_lat, N_trim, M_trim);
+% Cc_lat_interp = zeros(Nu_lat, Ni_lat, N_trim, M_trim);
+% Dc_lat_interp = zeros(Nu_lat, Nx_lat,N_trim, M_trim);
+% Dr_lat_interp = zeros(Nu_lat, Nr_lat, N_trim, M_trim);
 
-Ki_lat_interp = zeros(Ni_lat, Ni_lat, N_trim, M_trim);
-Kx_lat_interp = zeros(Ni_lat, Nx_lat, N_trim, M_trim);
-Kv_lat_interp = zeros(Ni_lat, Nv_lat, N_trim, M_trim);
+Ki_lat_interp = zeros(Nu_lat, Ni_lat, N_trim, M_trim);
+Kx_lat_interp = zeros(Nu_lat, Nx_lat, N_trim, M_trim);
+% Ki_lat_interp = zeros(Ni_lat, Ni_lat, N_trim, M_trim);
+% Kx_lat_interp = zeros(Ni_lat, Nx_lat, N_trim, M_trim);
+% Kv_lat_interp = zeros(Ni_lat, Nv_lat, N_trim, M_trim);
 
-F_lat_interp  = zeros(Ni_lat, Nr_lat, N_trim, M_trim);
-G_lat_interp  = zeros(Ni_lat, Nr_lat, N_trim, M_trim);
+% F_lat_interp  = zeros(Ni_lat, Nr_lat, N_trim, M_trim);
+% G_lat_interp  = zeros(Ni_lat, Nr_lat, N_trim, M_trim);
 C_lat_interp  = zeros(Ni_lat, Nx_lat, N_trim, M_trim);
-Cv_lat_interp = zeros(Nv_lat, Nx_lat, N_trim, M_trim);
+% Cv_lat_interp = zeros(Nv_lat, Nx_lat, N_trim, M_trim);
 
-Q_lat_interp  = zeros(2*Ni_lat, 2*Ni_lat, N_trim, M_trim);
-R_lat_interp  = zeros( Ni_lat, Ni_lat, N_trim, M_trim);
+Q_lat_interp = zeros((Nx_lat+Ni_lat), (Nx_lat+Ni_lat), N_trim, M_trim);
+R_lat_interp  = zeros(Nu_lat, Nu_lat, N_trim, M_trim);
 
-W_lat_interp  = zeros((Nu_lat+Nv_lat), (Nu_lat+Nv_lat), N_trim, M_trim);
-B_lat_interp  = zeros(Ni_lat, (Nu_lat+Nv_lat), N_trim, M_trim);
+% W_lat_interp  = zeros((Nu_lat+Nv_lat), (Nu_lat+Nv_lat), N_trim, M_trim);
+% B_lat_interp  = zeros(Ni_lat, (Nu_lat+Nv_lat), N_trim, M_trim);
 
 % **** Store the controller outputs in the GUAM/GVS .mat format.. *********
 for ii = 1:N_trim
@@ -276,32 +283,36 @@ for ii = 1:N_trim
         XU0_interp(:, ii,jj)    = LON(ii+(jj-1)*N_trim).XU0;
 
         % Longitudinal System
-        Ap_lon_interp = reshape([LON.Ap],Nx_lon,Nx_lon,N_trim,M_trim);
+        Ap_lon_interp = reshape([LON.Ap],Nx_lon,Nx_lon,N_trim,M_trim); % 이건 그냥 받아들여.
         Bp_lon_interp = reshape([LON.Bp],Nx_lon,Nu_lon,N_trim,M_trim);
         Cp_lon_interp = reshape([LON.Cp],Nx_lon,Nx_lon,N_trim,M_trim);
         Dp_lon_interp = reshape([LON.Dp],Nx_lon,Nu_lon,N_trim,M_trim);
         
-        Ac_lon_interp = reshape([LON.Ac],Ni_lon,Ni_lon,N_trim,M_trim);
-        Bc_lon_interp = reshape([LON.Bc],Ni_lon,Nx_lon,N_trim,M_trim);
-        Br_lon_interp = reshape([LON.Br],Ni_lon,Nr_lon,N_trim,M_trim);
-        Cc_lon_interp = reshape([LON.Cc],Nu_lon,Ni_lon,N_trim,M_trim);
-        Dc_lon_interp = reshape([LON.Dc],Nu_lon,Nx_lon,N_trim,M_trim);
-        Dr_lon_interp = reshape([LON.Dr],Nu_lon,Nr_lon,N_trim,M_trim);
+        % Ac_lon_interp = reshape([LON.Ac],Ni_lon,Ni_lon,N_trim,M_trim);
+        % Bc_lon_interp = reshape([LON.Bc],Ni_lon,Nx_lon,N_trim,M_trim);
+        % Br_lon_interp = reshape([LON.Br],Ni_lon,Nr_lon,N_trim,M_trim);
+        % Cc_lon_interp = reshape([LON.Cc],Nu_lon,Ni_lon,N_trim,M_trim);
+        % Dc_lon_interp = reshape([LON.Dc],Nu_lon,Nx_lon,N_trim,M_trim);
+        % Dr_lon_interp = reshape([LON.Dr],Nu_lon,Nr_lon,N_trim,M_trim);
+        % 
+        Ki_lon_interp = reshape([LON.Ki],Nu_lon,Ni_lon,N_trim,M_trim);
+        Kx_lon_interp = reshape([LON.Kx],Nu_lon,Nx_lon,N_trim,M_trim);
+        % Ki_lon_interp = reshape([LON.Ki],Ni_lon,Ni_lon,N_trim,M_trim);
+        % Kx_lon_interp = reshape([LON.Kx],Ni_lon,Nx_lon,N_trim,M_trim);
+        % Kv_lon_interp = reshape([LON.Kv],Ni_lon,Nv_lon,N_trim,M_trim);
         
-        Ki_lon_interp = reshape([LON.Ki],Ni_lon,Ni_lon,N_trim,M_trim);
-        Kx_lon_interp = reshape([LON.Kx],Ni_lon,Nx_lon,N_trim,M_trim);
-        Kv_lon_interp = reshape([LON.Kv],Ni_lon,Nv_lon,N_trim,M_trim);
-        
-        F_lon_interp = reshape([LON.F],Ni_lon,Nr_lon,N_trim,M_trim);
-        G_lon_interp = reshape([LON.G],Ni_lon,Nr_lon,N_trim,M_trim);
+        % F_lon_interp = reshape([LON.F],Ni_lon,Nr_lon,N_trim,M_trim);
+        % G_lon_interp = reshape([LON.G],Ni_lon,Nr_lon,N_trim,M_trim);
         C_lon_interp = reshape([LON.C],Ni_lon,Nx_lon,N_trim,M_trim);
-        Cv_lon_interp = reshape([LON.Cv],Nv_lon,Nx_lon,N_trim,M_trim);
+        % Cv_lon_interp = reshape([LON.Cv],Nv_lon,Nx_lon,N_trim,M_trim);
         
-        Q_lon_interp = reshape([LON.Q],2*Ni_lon, 2*Ni_lon, N_trim,M_trim);
-        R_lon_interp = reshape([LON.R],Ni_lon,Ni_lon,N_trim,M_trim);
+        Q_lon_interp = reshape([LON.Q],(Nx_lon+Ni_lon), (Nx_lon+Ni_lon), N_trim,M_trim);
+        R_lon_interp = reshape([LON.R],Nu_lon,Nu_lon,N_trim,M_trim);
+        % Q_lon_interp = reshape([LON.Q],2*Ni_lon, 2*Ni_lon, N_trim,M_trim);
+        % R_lon_interp = reshape([LON.R],Ni_lon,Ni_lon,N_trim,M_trim);
         
-        W_lon_interp = reshape([LON.W],Nu_lon+Nv_lon,Nu_lon+Nv_lon,N_trim,M_trim);
-        B_lon_interp = reshape([LON.B],Ni_lon,Nu_lon+Nv_lon,N_trim, M_trim);
+        % W_lon_interp = reshape([LON.W],Nu_lon+Nv_lon,Nu_lon+Nv_lon,N_trim,M_trim);
+        % B_lon_interp = reshape([LON.B],Ni_lon,Nu_lon+Nv_lon,N_trim, M_trim);
         
         % Lateral System
         Ap_lat_interp = reshape([LAT.Ap],Nx_lat,Nx_lat,N_trim, M_trim);
@@ -309,27 +320,31 @@ for ii = 1:N_trim
         Cp_lat_interp = reshape([LAT.Cp],Nx_lat,Nx_lat,N_trim, M_trim);
         Dp_lat_interp = reshape([LAT.Dp],Nx_lat,Nu_lat,N_trim, M_trim);
         
-        Ac_lat_interp = reshape([LAT.Ac],Ni_lat,Ni_lat,N_trim, M_trim);
-        Bc_lat_interp = reshape([LAT.Bc],Ni_lat,Nx_lat,N_trim, M_trim);
-        Br_lat_interp = reshape([LAT.Br],Ni_lat,Nr_lat,N_trim, M_trim);
-        Cc_lat_interp = reshape([LAT.Cc],Nu_lat,Ni_lat,N_trim, M_trim);
-        Dc_lat_interp = reshape([LAT.Dc],Nu_lat,Nx_lat,N_trim, M_trim);
-        Dr_lat_interp = reshape([LAT.Dr],Nu_lat,Nr_lat,N_trim, M_trim);
+        % Ac_lat_interp = reshape([LAT.Ac],Ni_lat,Ni_lat,N_trim, M_trim);
+        % Bc_lat_interp = reshape([LAT.Bc],Ni_lat,Nx_lat,N_trim, M_trim);
+        % Br_lat_interp = reshape([LAT.Br],Ni_lat,Nr_lat,N_trim, M_trim);
+        % Cc_lat_interp = reshape([LAT.Cc],Nu_lat,Ni_lat,N_trim, M_trim);
+        % Dc_lat_interp = reshape([LAT.Dc],Nu_lat,Nx_lat,N_trim, M_trim);
+        % Dr_lat_interp = reshape([LAT.Dr],Nu_lat,Nr_lat,N_trim, M_trim);
+        % 
+        Ki_lat_interp = reshape([LAT.Ki],Nu_lat,Ni_lat,N_trim,M_trim);
+        Kx_lat_interp = reshape([LAT.Kx],Nu_lat,Nx_lat,N_trim,M_trim);
+        % Ki_lat_interp = reshape([LAT.Ki],Ni_lat,Ni_lat,N_trim, M_trim);
+        % Kx_lat_interp = reshape([LAT.Kx],Ni_lat,Nx_lat,N_trim, M_trim);
+        % Kv_lat_interp = reshape([LAT.Kv],Ni_lat,Nv_lat,N_trim, M_trim);
         
-        Ki_lat_interp = reshape([LAT.Ki],Ni_lat,Ni_lat,N_trim, M_trim);
-        Kx_lat_interp = reshape([LAT.Kx],Ni_lat,Nx_lat,N_trim, M_trim);
-        Kv_lat_interp = reshape([LAT.Kv],Ni_lat,Nv_lat,N_trim, M_trim);
-        
-         F_lat_interp = reshape([LAT.F], Ni_lat,Nr_lat,N_trim, M_trim);
-         G_lat_interp = reshape([LAT.G], Ni_lat,Nr_lat,N_trim, M_trim);
+         % F_lat_interp = reshape([LAT.F], Ni_lat,Nr_lat,N_trim, M_trim);
+         % G_lat_interp = reshape([LAT.G], Ni_lat,Nr_lat,N_trim, M_trim);
          C_lat_interp = reshape([LAT.C], Ni_lat,Nx_lat,N_trim, M_trim);
-        Cv_lat_interp = reshape([LAT.Cv],Nv_lat,Nx_lat,N_trim, M_trim);
+        % Cv_lat_interp = reshape([LAT.Cv],Nv_lat,Nx_lat,N_trim, M_trim);
         
-         Q_lat_interp = reshape([LAT.Q],2*Ni_lat, 2*Ni_lat, N_trim,M_trim);
-         R_lat_interp = reshape([LAT.R],Ni_lat,Ni_lat,N_trim,M_trim);
+         Q_lat_interp = reshape([LAT.Q],(Nx_lat+Ni_lat), (Nx_lat+Ni_lat), N_trim,M_trim);
+         R_lat_interp = reshape([LAT.R],Nu_lat,Nu_lat,N_trim,M_trim);
+         % Q_lat_interp = reshape([LAT.Q],2*Ni_lat, 2*Ni_lat, N_trim,M_trim);
+         % R_lat_interp = reshape([LAT.R],Ni_lat,Ni_lat,N_trim,M_trim);
         
-         W_lat_interp = reshape([LAT.W], Nu_lat+Nv_lat,Nu_lat+Nv_lat,N_trim, M_trim);
-         B_lat_interp = reshape([LAT.B], Ni_lat,       Nu_lat+Nv_lat,N_trim, M_trim);
+         % W_lat_interp = reshape([LAT.W], Nu_lat+Nv_lat,Nu_lat+Nv_lat,N_trim, M_trim);
+         % B_lat_interp = reshape([LAT.B], Ni_lat,       Nu_lat+Nv_lat,N_trim, M_trim);
 
     end % End of for kk=1:L_trim (R)
   end % End of for jj=1:M_trim (WH)
@@ -344,20 +359,32 @@ end % End of for ii=1:N_trim (UH)
 % (e.g. .../vehicle/Lift+Cruise/setup/setupControl.m) 
 % *************************************************************************
 
+% save(fullfile(out_cntr_fpath, out_cntr_fname),...
+%      'UH','WH','R',...
+%      'Ap_lon_interp','Bp_lon_interp','Cp_lon_interp','Dp_lon_interp',...
+%      'Ac_lon_interp','Bc_lon_interp','Br_lon_interp',...
+%      'Cc_lon_interp','Dc_lon_interp','Dr_lon_interp',...
+%      'Ki_lon_interp','Kx_lon_interp','Kv_lon_interp',...
+%      'F_lon_interp','G_lon_interp','C_lon_interp','Cv_lon_interp',...
+%      'W_lon_interp','B_lon_interp',...
+%      'Ap_lat_interp','Bp_lat_interp','Cp_lat_interp','Dp_lat_interp',...
+%      'Ac_lat_interp','Bc_lat_interp','Br_lat_interp',...
+%      'Cc_lat_interp','Dc_lat_interp','Dr_lat_interp',...
+%      'Ki_lat_interp','Kx_lat_interp','Kv_lat_interp',...
+%      'F_lat_interp','G_lat_interp','C_lat_interp','Cv_lat_interp',...
+%      'W_lat_interp','B_lat_interp',...
+%      'Nx_lon','Ni_lon','Nu_lon','Nr_lon','Nv_lon', ...
+%      'Nx_lat','Ni_lat','Nu_lat','Nr_lat','Nv_lat', ...
+%      'XU0_interp')
+
 save(fullfile(out_cntr_fpath, out_cntr_fname),...
      'UH','WH','R',...
      'Ap_lon_interp','Bp_lon_interp','Cp_lon_interp','Dp_lon_interp',...
-     'Ac_lon_interp','Bc_lon_interp','Br_lon_interp',...
-     'Cc_lon_interp','Dc_lon_interp','Dr_lon_interp',...
-     'Ki_lon_interp','Kx_lon_interp','Kv_lon_interp',...
-     'F_lon_interp','G_lon_interp','C_lon_interp','Cv_lon_interp',...
-     'W_lon_interp','B_lon_interp',...
+     'Ki_lon_interp','Kx_lon_interp',...
+     'C_lon_interp',...
      'Ap_lat_interp','Bp_lat_interp','Cp_lat_interp','Dp_lat_interp',...
-     'Ac_lat_interp','Bc_lat_interp','Br_lat_interp',...
-     'Cc_lat_interp','Dc_lat_interp','Dr_lat_interp',...
-     'Ki_lat_interp','Kx_lat_interp','Kv_lat_interp',...
-     'F_lat_interp','G_lat_interp','C_lat_interp','Cv_lat_interp',...
-     'W_lat_interp','B_lat_interp',...
+     'Ki_lat_interp','Kx_lat_interp',...
+     'C_lat_interp',...
      'Nx_lon','Ni_lon','Nu_lon','Nr_lon','Nv_lon', ...
      'Nx_lat','Ni_lat','Nu_lat','Nr_lat','Nv_lat', ...
      'XU0_interp')

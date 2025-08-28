@@ -2,7 +2,10 @@
 model = 'GUAM';
 % use timeseries input
 userStruct.variants.refInputType=3; % 1=FOUR_RAMP, 2= ONE_RAMP, 3=Timeseries, 4=Piecewise Bezier, 5=Default(doublets)
-
+userStruct.variants.ctrlType=3;
+userStruct.variants.actType=2;
+%userStruct.switches.WindsOn = 1;
+%userStruct.switches.TurbulenceOn = 1;
 %% setup trajectory and pass to target
 time        = [0 20 40]'; % Column vector of time points
 N_time = length(time);
@@ -15,13 +18,14 @@ chid    = zeros(N_time, 3);
 
 % define trajectory as hovering climb and then acceleration to forward flight
 % prescibe inertial position (NED)
-pos     = [0 0 0; 0 0 -80; 150 0 -100]; % Inertial Positions (x,y,-z) row vector for each time
+pos     = [0 0 0; 0 0 -80; 150 0 -100]; % Inertial Positions (x,y,-z) row vector for each time, [0 0 0; 0 0 -80; 150 0 -100];
 
 % Compute velocity
 vel_i   = [0 0 -8;0 0 0; 15 0 0];
 % vel_i(:,1)  = gradient(pos(:,1))./gradient(time); 
 % vel_i(:,2)  = gradient(pos(:,2))./gradient(time); 
 % vel_i(:,3)  = gradient(pos(:,3))./gradient(time); 
+
 
 % Compute heading
 chi     = atan2(vel_i(:,2),vel_i(:,1));

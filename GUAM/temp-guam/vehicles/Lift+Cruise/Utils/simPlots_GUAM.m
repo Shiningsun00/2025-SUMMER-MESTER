@@ -348,4 +348,74 @@ legend('x','y','z');
 grid on
 zoom on
 
+%% custum plot
+% x error
+figure
+plot(time, (pos(:,1)-pos_des(:,1)),'linewidth',1.25)
+ylabel('Position Error [ft]','fontsize',15)
+xlabel('time [sec]','fontsize',15)
+legend('x');
+grid on
+axis([0 40 -50 50])
 
+% y error
+figure
+plot(time, (pos(:,2)-pos_des(:,2)),'linewidth',1.25)
+ylabel('Position Error [ft]','fontsize',15)
+xlabel('time [sec]','fontsize',15)
+legend('y');
+grid on
+axis([0 40 -1 1])
+
+% z error
+figure
+plot(time, (pos(:,3)-pos_des(:,3)),'linewidth',1.25)
+ylabel('Position Error [ft]','fontsize',15)
+xlabel('time [sec]','fontsize',15)
+legend('z');
+grid on
+axis([0 40 -20 20])
+
+% x, z error
+
+figure
+plot(time, (pos(:,1)-pos_des(:,1)),'linewidth',1.25)
+hold on
+plot(time, (pos(:,3)-pos_des(:,3)),'linewidth',1.25)
+ylabel('Position Error [ft]','fontsize',15)
+xlabel('time [sec]','fontsize',15)
+legend('x','z');
+grid on
+axis([0 40 -50 50])
+
+figure
+plot(time, -pos(:,3),time, -pos_des(:,3))
+ylabel('height [ft]','fontsize',15)
+legend({'flown','desired'},'fontsize',12)
+%axis([min(t_des) max(time) min(-pos_des(:,3)) max(-pos_des(:,3))+spc])
+grid on
+zoom on
+
+figure
+subplot(3,1,1)
+plot(time, prop_om(:,1:4)*60/2/pi)
+ylabel('leading [rpm]','fontsize',15)
+legend({'rotor 1','rotor 2','rotor 3','rotor 4'},'fontsize',12)
+%axis([0 max(time) 0 1250])
+grid on
+zoom on
+
+subplot(3,1,2)
+plot(time, prop_om(:,5:8)*60/2/pi)
+ylabel('trailing [rpm]','fontsize',15)
+legend({'rotor 5','rotor 6','rotor 7','rotor 8'},'fontsize',12)
+%axis([0 max(time) 0 1250])
+grid on
+zoom on
+
+subplot(3,1,3)
+plot(time, prop_om(:,9)*60/2/pi)
+ylabel('pusher [rpm]','fontsize',15)
+%axis([0 max(time) 0 2500])
+grid on
+zoom on

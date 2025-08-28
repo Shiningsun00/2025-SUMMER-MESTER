@@ -258,7 +258,7 @@ else
     AeroModel_rot_2 = zeros(1,6);
     
 
-    if u>=-5*1.02 && u<=45*1.02 && min([N1;N2;N3;N4;N5;N6;N7;N8])>=550 && N9>0 && N9<750
+    if u>=-5*1.02 && u<=45*1.02 && min([N1;N2;N3;N4;N5;N6;N7;N8])>=550 && N9>0 && N9<750 % >=550
     % blending between hover and transition (turning on/off the pusher
     % propeller at low speeds) 
     

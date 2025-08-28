@@ -6,7 +6,7 @@ setupPath;
 
 % setup the structure containing enumeration values used to set types in
 % SimIn to determine variant selections (used by setupTypes.m)
-setupVariantStruct;
+setupVariantStruct; % ~/setup/에 위치
 
 % assign type choice selections into SimIn structure
 SimIn = setupTypes(SimIn, userStruct.variants);
@@ -25,7 +25,7 @@ end
 SimIn.Units=setUnits('ft','slug');
   
 % Set reference inputs
-if SimIn.Switches.RefTrajOn
+if SimIn.Switches.RefTrajOn % RefTraj있을 시에 ~/setup/setupSwitches.m 파일에서 switch값을 바꾸던지 userStruct.switches.RefTrajOn = 1;명령어 입력할 것.
     if SimIn.refInputType == RefInputEnum.TIMESERIES  
         % Timeseries trajectory option
         if ~(exist('target','var') && isfield(target,'RefInput'))

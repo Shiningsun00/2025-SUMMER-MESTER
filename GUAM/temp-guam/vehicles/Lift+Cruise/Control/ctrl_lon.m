@@ -72,31 +72,44 @@ NP = 9; % Specify number of rotor/propeller control effectors
 % full trim vector
 [Alon, Blon, Clon, Dlon, XU0, A_full, B_full, C_full, D_full] = get_long_dynamics_heading(aircraft, xeq, ueq, NS, NP, rho, grav, FreeVar_pnt, Trans_pnt);
 
-if xeq(1) > Trans_pnt(2) % Zero out the lifting rotors after the trans regime ends
+if xeq(1) > Trans_pnt(2) % Zero out the lifting rotors after the trans regime ends -> final transition velocity와 xeq상태의 velocity 비교
     Blon(:,1:8) = zeros(4,8);
 end
 
 % size definitions
 Nx  = 4;  % system states
-Ni  = 3;  % integrator states
+Ni  = 3;  % integrator states, 밑에 있는 변수 모두 mu를 이용한 lqr 계산 시 state, effector의 차원을 나타낸것.
 Nr  = 3;  % reference 
 Nu  = 11; % physical controls
 Nv  = 1;  % virtual controls
 Nmu = 3;  % general inputs
 Nxi = 3;  % general states
 
-% Performance design with general acceleration inputs
+% Performance design with general acceleration inputs, mu(뮤)에 대한 lqr,
+% general acceleration inputs : mu
 Av = Alon([1 2 3], [1 2 3]);
 Bv = eye(Nxi);
 Cv = eye(Nxi);
 Dv = zeros(Nxi);
 
-At = [ zeros(Ni,Ni)   Cv   ;
-       zeros(Nxi,Ni)   Av  ];
-Bt = [ Dv; Bv];
+At = [ zeros(Ni,Ni)   Cv   ; % A~
+       zeros(Nxi,Ni)   Av  ]; 
+Bt = [ Dv; Bv]; % B~
+
+eigA = eig(At); % A, B가 controllable 한지 판단
+for i = 1:length(eigA)
+    lam = eigA(i);
+    if real(lam) >= 0
+        M = [lam*eye(size(At))-At, Bt];
+        if rank(M) < size(At, 1)
+            fprintf("Stabilizable하지 않은 고유값: %.3f\n", lam)
+        end
+    end
+end
+
 
 % LQR optimal feedback gains
-[Kc, P, CLP] = lqr(At,Bt,Q,R);
+[Kc, P, CLP] = lqr(At,Bt,Q,R); % 폐루프 시스템의 극점 열백터
 Ki0 = Kc(:,1:Ni);
 Kx0 = Kc(:,Ni+1:Ni+Nxi);
 
@@ -142,18 +155,18 @@ if sum(eig(Acl) > 0)
 end
 
 % Assign outputs
-out.Ap = A;
+out.Ap = A; % mu로 계산할 때 사용하는 state space matrix
 out.Bp = B;
 out.Cp = eye(Nx);
 out.Dp = zeros(Nx,Nu);
 
-out.Ac = Kv*Mv*Ki;
+out.Ac = Kv*Mv*Ki; % 논문에 나와있는 state space matrix, VFS 논문 참고
 out.Bc = Kv*Mv*Kx+Kv*Cv+C;
-out.Br = -eye(Ni,Nr);
+out.Br = -eye(Ni,Nr); % lat control과 비교하여 나온 matrix
 
-out.Cc = -Mu*Ki;
+out.Cc = -Mu*Ki; % 논문에 나와있는 state space matrix, VFS 논문 참고
 out.Dc = -Mu*Kx;
-out.Dr =  zeros(Nu,Nr);
+out.Dr =  zeros(Nu,Nr); % lat control과 비교하여 나온 matrix
 
 out.Ki = Ki;
 out.Kx = Kx;
@@ -168,7 +181,7 @@ out.Q = Q;
 out.R = R;
 
 out.W  = Wc;
-out.B  = Bu;
+out.B  = Bu; % augmented B matrix(Bbar_lon)
 
 % Output the full linearized dynamics state-space matrices
 out.A_full = A_full;

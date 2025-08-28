@@ -1,27 +1,27 @@
 function [out, ctrl_error] = ctrl_lat(aircraft, xu_eq, rho, grav, q, r, wc, FreeVar_pnt, Trans_pnt)
 % *************************************************************************
 % function [ out ctrl_error] = ctrl_lat(aircraft, xu_eq, rho, grav, q,r,wc)
-%
+% 
 % This script takes input of an aero/propulsive model (strip theory or
 % polynomial), a particular trim condition (one point of a trim schedule),
 % and desired optimization weights and outputs a unified longitudinal
 % controller.
-%
+% 
 % REFERENCES: 
 % Ref 1 (unified controller): "Examination of Unified Control Approaches Incorporating
 % Generalized Control Allocation", AIAA 2021-0999
-%
+% 
 % Ref 2 (strip theory aero/propulsive model): "A Strip Theory Approach to
 % Dynamic Modeling of Tiltwing eVTOL Aircraft", AIAA 2021-1720
 % 
 % Ref 3 (polynomial aero/propulsive model): "Full-Envelope Aero-Propulsive Model
 % Identification for Lift+Cruise Aircraft Using Computational Experiments",
 % AIAA 2021-3170
-%
+% 
 % Written by Jacob Cook, NASA Langley Research Center.
 % Current contact michael.j.acheson@nasa.gov, (757)-864-9457
 % Dynamics Systems and Control Branch (DSCB D-316)
-%
+% 
 % INPUTS:
 %   aircraft: Either matlab aircraft class object (strip theory), or
 %       structure of L+C data (polynomial)
@@ -43,7 +43,7 @@ function [out, ctrl_error] = ctrl_lat(aircraft, xu_eq, rho, grav, q, r, wc, Free
 % OTHER UTILIZED FUNCTIONS:
 %   get_lat_dynamics_heading.m: % Get the linearized lateral dynamics of L+C vehicle 
 % *************************************************************************
-
+% 
 % VERSION HISTORY
 % 7.16.2021, Jacob Cook (NASA LaRC D-316): Initial version for use with
 % NASA Lift+Cruise (L+C) vehicle in GVS
@@ -52,7 +52,7 @@ function [out, ctrl_error] = ctrl_lat(aircraft, xu_eq, rho, grav, q, r, wc, Free
 % include documentation, changes to output B and W matrices (based on
 % desired active control effectors, and inclusion of flaps capability as an
 % active control effector
-% 
+
 
 ctrl_error = 0; % Initialize controller design error flag to false
 
@@ -60,7 +60,7 @@ Q = diag(q);
 R = diag(r);
 Wc = diag(wc);
 
-% State space dynamics in the control frame
+%State space dynamics in the control frame
 xeq = xu_eq(1:8); % Pull out the trim condition state variables
 
 ueq = [xu_eq(9:end)]; % Don't add flap input (not used to trim)
@@ -101,7 +101,7 @@ Ki0 = Kc(:,1:Ni);
 Kx0 = Kc(:,Ni+1:Ni+Nxi);
 
 % Control Allocation design 
-% Bu = [u u_v]
+%Bu = [u u_v]
 Bu = [ Blat([1 2 3],:) Alat([1 2 3], 4) ];
 
 % Define the mapping from general input to 
@@ -129,7 +129,7 @@ Mv = M(Nu+Nv,:);
 Cv = Clat(4,:);
 Kv = [0; 1; 0];
 
-% 
+
 th0  = XU0(11);
 phi0 = XU0(10);
 q0   = XU0(5);
@@ -137,8 +137,8 @@ vc0  = XU0(1:3);
 vb0  = Rx(phi0)*Ry(th0)*vc0;
 ub0  = vb0(1);
 
-F = [1 0; 0 0; 0 1-phi0*q0];
-G = [0 ub0; 0 0; 0 0];
+F = [1 0; 0 0; 0 1-phi0*q0]; % 1-phi0*q0
+G = [0 0; 0 ub0; 0 0]; % G = [0 ub0; 0 0; 0 0];, 논문 참고
 
 Acl = [ Kv*Mv*Ki    Kv*Mv*Kx+Kv*Cv+C  ;
         -B*Mu*Ki           A-B*Mu*Kx ];
@@ -149,7 +149,7 @@ if sum(eig(Acl) > 0)
   ctrl_error = 1;
 end
 
-%Assign outputs
+% Assign outputs
 out.Ap = A;
 out.Bp = B;
 out.Cp = eye(Nx);
